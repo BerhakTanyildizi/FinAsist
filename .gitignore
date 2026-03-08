@@ -1,0 +1,43 @@
+# ── Python / Backend ──
+backend/venv/
+backend/__pycache__/
+backend/routers/__pycache__/
+backend/.env
+backend/*.db
+*.pyc
+__pycache__/
+
+# ── Flutter / Frontend ──
+finasist/.dart_tool/
+finasist/.flutter-plugins
+finasist/.flutter-plugins-dependencies
+finasist/build/
+finasist/.packages
+finasist/pubspec.lock
+finasist/android/.gradle/
+finasist/android/local.properties
+finasist/android/app/debug/
+finasist/android/app/profile/
+finasist/android/app/release/
+finasist/ios/Pods/
+finasist/ios/.symlinks/
+finasist/windows/flutter/ephemeral/
+finasist/linux/flutter/ephemeral/
+finasist/macos/Flutter/ephemeral/
+finasist/web/favicon.png
+
+# ── IDE ──
+.idea/
+.vscode/
+*.iml
+.cursor/
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Misc ──
+*.log
+*.tmp
+assets/
