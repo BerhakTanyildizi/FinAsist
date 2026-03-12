@@ -19,6 +19,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   DateTime selectedDate = DateTime.now();
   bool _isSaving = false;
 
+  // Düzenli işlem state'leri
+  bool isRecurring = false;
+  String selectedFrequency = 'Aylık'; // 'Aylık', 'Haftalık', 'Yıllık'
+  DateTime? endDate;
+
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _merchantController = TextEditingController();
@@ -279,6 +284,78 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // ── Düzenli İşlem / Taksit Toggle ──
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white10 : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: isRecurring ? (isExpense ? Colors.red : Colors.green) : Colors.transparent, width: 2),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Düzenli İşlem / Taksit mi?', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey[800])),
+                      Switch(
+                        value: isRecurring,
+                        activeColor: isExpense ? Colors.red : Colors.green,
+                        onChanged: (val) => setState(() => isRecurring = val),
+                      ),
+                    ],
+                  ),
+                  if (isRecurring) ...[
+                    const Divider(height: 24),
+                    Row(
+                      children: [
+                        const Text('Tekrar Sıklığı: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        DropdownButton<String>(
+                          value: selectedFrequency,
+                          underline: const SizedBox(),
+                          items: const [
+                            DropdownMenuItem(value: 'Aylık', child: Text('Aylık')),
+                            DropdownMenuItem(value: 'Haftalık', child: Text('Haftalık')),
+                            DropdownMenuItem(value: 'Yıllık', child: Text('Yıllık')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => selectedFrequency = val);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Bitiş Tarihi: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: endDate ?? selectedDate.add(const Duration(days: 30)),
+                              firstDate: selectedDate,
+                              lastDate: DateTime(2040),
+                            );
+                            if (picked != null) setState(() => endDate = picked);
+                          },
+                          icon: const Icon(Icons.date_range, size: 18),
+                          label: Text(endDate == null ? 'Süresiz (Seç)' : '${endDate!.day.toString().padLeft(2, '0')}/${endDate!.month.toString().padLeft(2, '0')}/${endDate!.year}'),
+                        ),
+                        if (endDate != null)
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 18, color: Colors.red),
+                            onPressed: () => setState(() => endDate = null),
+                          )
+                      ],
+                    ),
+                  ]
+                ],
+              ),
+            ),
             const SizedBox(height: 36),
 
             // ── Kaydet ──
@@ -329,19 +406,36 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    setState(() => _isSaving = true);
-
     final dateStr =
         '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
 
-    final success = await context.read<TransactionProvider>().addTransaction(
-          categoryId: selectedCategoryId,
-          amount: amount,
-          type: isExpense ? 'expense' : 'income',
-          transactionDate: dateStr,
-          merchant: _merchantController.text.trim(),
-          description: _descriptionController.text.trim(),
-        );
+    bool success = false;
+    
+    if (isRecurring) {
+      String? endDateStr;
+      if (endDate != null) {
+        endDateStr = '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}';
+      }
+      
+      success = await context.read<TransactionProvider>().addRecurringTransaction(
+        categoryId: selectedCategoryId,
+        amount: amount,
+        type: isExpense ? 'expense' : 'income',
+        frequency: selectedFrequency,
+        startDate: dateStr,
+        endDate: endDateStr,
+        description: _descriptionController.text.trim(),
+      );
+    } else {
+      success = await context.read<TransactionProvider>().addTransaction(
+        categoryId: selectedCategoryId,
+        amount: amount,
+        type: isExpense ? 'expense' : 'income',
+        transactionDate: dateStr,
+        merchant: _merchantController.text.trim(),
+        description: _descriptionController.text.trim(),
+      );
+    }
 
     if (!mounted) return;
     setState(() => _isSaving = false);
