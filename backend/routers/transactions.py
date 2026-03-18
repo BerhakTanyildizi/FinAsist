@@ -6,6 +6,7 @@ from database import get_db
 from models import Transaction, User
 from schemas import TransactionCreate, TransactionUpdate, TransactionResponse
 from routers.auth import get_current_user
+from routers.recurring import sync_recurring_transactions
 
 router = APIRouter(prefix="/transactions", tags=["İşlemler"])
 
@@ -38,6 +39,9 @@ def list_transactions(
     current_user: User = Depends(get_current_user),
 ):
     """Giriş yapan kullanıcının tüm işlemlerini listeler (son eklenen ilk sırada)."""
+    # Otomatik senkronize et
+    sync_recurring_transactions(db, current_user.id)
+
     return (
         db.query(Transaction)
         .filter(Transaction.user_id == current_user.id)

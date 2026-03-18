@@ -2,9 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
-from routers import auth, transactions
+from routers import auth, transactions, categories, recurring
 
 # Tabloları oluştur (ilk çalıştırmada)
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -25,6 +26,8 @@ app.add_middleware(
 # Router'ları ekle
 app.include_router(auth.router)
 app.include_router(transactions.router)
+app.include_router(categories.router)
+app.include_router(recurring.router)
 
 
 @app.get("/", tags=["Genel"])
