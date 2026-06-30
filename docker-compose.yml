@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      # Kök dizindeki .env dosyasından okunur (bkz. .env.example) — sabit/tahmin
+      # edilebilir bir şifre commit edilmesin diye buradan dışarı çıkarıldı.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Kök dizinde .env dosyası oluşturup POSTGRES_PASSWORD belirleyin (bkz. .env.example)}
+      POSTGRES_DB: finasist_db
+    volumes:
+      - finasist_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Docker ağında veritabanına servis adıyla (db) erişilir, backend/.env'deki
+      # localhost değeri burada BİLEREK geçersiz kılınır.
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Kök dizinde .env dosyası oluşturup POSTGRES_PASSWORD belirleyin (bkz. .env.example)}@db:5432/finasist_db
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./finasist
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  finasist_pgdata:

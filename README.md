@@ -85,7 +85,56 @@ Tubitak 2209-A/
 
 ---
 
-## Kurulum
+## Hızlı Başlangıç (Docker) — Önerilen
+
+Python, PostgreSQL veya Flutter SDK kurmanıza gerek yok — tek gereksinim **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**.
+
+### 1. Ortam Değişkenlerini Ayarlayın
+
+İki `.env` dosyası gerekir — biri uygulama secret'ları için, biri docker-compose'un veritabanı şifresi için:
+
+```bash
+# a) Uygulama secret'ları
+cd backend
+cp .env.example .env   # Windows: copy .env.example .env
+cd ..
+
+# b) docker-compose'un PostgreSQL şifresi (proje kökünde)
+cp .env.example .env   # Windows: copy .env.example .env
+```
+
+`backend/.env` dosyasını açıp en az şunları doldurun:
+```env
+SECRET_KEY=               # python -c "import secrets; print(secrets.token_hex(32))"
+GROQ_API_KEY=              # console.groq.com adresinden ücretsiz alınır (fiş tarama + AI danışman için gerekli)
+```
+> `DATABASE_URL` Docker Compose tarafından otomatik ayarlanır, `backend/.env`'deki değeri görmezden gelinir.
+
+Kök dizindeki `.env` dosyasını açıp `POSTGRES_PASSWORD` için güçlü bir değer belirleyin (bu değer eksikse `docker-compose up` açık bir hata ile başlamayı reddeder).
+
+### 2. Başlatın
+
+Proje kök dizininde (`docker-compose.yml`'in olduğu yer):
+```bash
+docker-compose up --build
+```
+İlk çalıştırma; Flutter web derlemesi + Python bağımlılıkları nedeniyle birkaç dakika sürebilir. Sonraki başlatmalar saniyeler içinde tamamlanır.
+
+### 3. Kullanın
+
+Tarayıcıda **http://localhost:3000** adresini açın. Backend API: `http://localhost:8000/docs`
+
+> **Hazır demo hesabı:** `test@finasist.com` / `123456` (sadece yerel/demo kullanım içindir).
+
+### Durdurmak için
+```bash
+docker-compose down          # konteynerleri durdur
+docker-compose down -v       # + veritabanı verisini de sil
+```
+
+---
+
+## Manuel Kurulum (Docker Kullanmadan)
 
 ### Gereksinimler
 - **Python 3.10+**
