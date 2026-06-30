@@ -12,12 +12,24 @@ from dotenv import load_dotenv
 from database import get_db
 from models import User
 from schemas import UserCreate, UserResponse, Token, LoginRequest
+from services.rate_limiter import rate_limit
 
 load_dotenv()
 
 router = APIRouter(prefix="/auth", tags=["Kimlik Doğrulama"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
+# Güvenlik: SECRET_KEY için ASLA tahmin edilebilir bir varsayılan kullanılmaz.
+# .env'de tanımlı değilse uygulama başlamayı reddeder (fail-fast / fail-closed) —
+# aksi halde herkesin bildiği bir secret ile geçerli JWT sahteciliği yapılabilirdi.
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY ortam değişkeni tanımlı değil! backend/.env dosyasında güçlü, "
+        "rastgele bir SECRET_KEY belirleyin (örn: python -c \"import secrets; "
+        "print(secrets.token_hex(32))\"). Güvenlik nedeniyle sabit/varsayılan bir "
+        "değerle çalıştırılmaz."
+    )
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
@@ -62,7 +74,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 # ─── ENDPOINTS ───
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(max_requests=5, window_seconds=60))],
+)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Yeni kullanıcı kaydı."""
     existing = db.query(User).filter(User.email == user_data.email).first()
@@ -80,7 +97,11 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))],
+)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     """Kullanıcı girişi, JWT token döndürür."""
     user = db.query(User).filter(User.email == credentials.email).first()

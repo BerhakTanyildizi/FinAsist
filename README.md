@@ -1,8 +1,21 @@
 # Finasist - Yapay Zeka Destekli Finansal Danışman
 
-**TUBİTAK 2209-A Üniversite Öğrencileri Araştırma Projeleri Destekleme Programı**
+**TÜBİTAK 2209-A Üniversite Öğrencileri Araştırma Projeleri Destekleme Programı**
 
-Finasist, kullanıcıların gelir ve giderlerini takip etmesini, harcama alışkanlıklarını analiz etmesini ve yapay zeka destekli finansal öneriler almasını sağlayan bir mobil uygulamadır.
+Finasist; gelir/gider takibi, fiş/fatura tarama (OCR + LLM), yapay zeka destekli finansal danışmanlık ve PDF raporlama sunan, Flutter (mobil/web/masaüstü) + FastAPI tabanlı bir kişisel finans uygulamasıdır.
+
+---
+
+## Özellikler
+
+- **Gelir/Gider Takibi** — kategori bazlı işlem kaydı, düzenli (tekrarlayan) işlemler, taksitler
+- **Fiş Tarama** — Görseli doğrudan bir görsel-dil modeline (Groq Vision) göndererek OCR'sız, yüksek doğrulukta kurum adı/tarih/tutar/KDV/kategori çıkarımı; model erişilemezse EasyOCR + LLM metin ayrıştırma + regex tabanlı yedek katmanlara otomatik düşer
+- **AI Finansal Danışman** — kullanıcının son 30 günlük gerçek gelir/gider verilerine dayanan, Groq (Llama 3.3 70B) destekli sohbet; kategori bazlı tasarruf önerileri, aksiyon planları
+- **PDF Rapor** — gelir/gider özeti, kategori dağılım grafiği ve işlem geçmişini PDF olarak indirme (dönemsel veya tüm zamanlar)
+- **Finansal Raporlar** — günlük/haftalık/aylık trend grafikleri, dönemsel karşılaştırma
+- **Uygulama Kilidi** — 4 haneli PIN ile yerel uygulama kilidi
+- **Açık/Koyu Tema** — tüm ekranlarda tema-duyarlı renk şeması
+- **Veri Dışa Aktarma** — tüm işlem geçmişini PDF olarak dışa aktarma
 
 ---
 
@@ -10,78 +23,86 @@ Finasist, kullanıcıların gelir ve giderlerini takip etmesini, harcama alışk
 
 ```
 Tubitak 2209-A/
-├── backend/              # FastAPI REST API
-│   ├── main.py           # Uygulama giriş noktası
-│   ├── database.py       # PostgreSQL bağlantısı
-│   ├── models.py         # SQLAlchemy ORM modelleri
-│   ├── schemas.py        # Pydantic doğrulama şemaları
-│   ├── seed_data.py      # Varsayılan kategori verileri
-│   ├── requirements.txt  # Python bağımlılıkları
-│   ├── .env              # Ortam değişkenleri (git'e eklenmez)
-│   └── routers/
-│       ├── auth.py       # Kayıt, giriş, JWT token yönetimi
-│       └── transactions.py  # Gelir/gider CRUD işlemleri
+├── backend/                    # FastAPI REST API
+│   ├── main.py                 # Uygulama girişi, CORS, istek boyutu sınırı
+│   ├── database.py             # PostgreSQL bağlantısı
+│   ├── models.py                # SQLAlchemy ORM modelleri
+│   ├── schemas.py               # Pydantic doğrulama şemaları
+│   ├── seed.py / seed_data.py   # Test kullanıcısı / varsayılan kategoriler
+│   ├── requirements.txt
+│   ├── .env.example             # Ortam değişkeni şablonu (gerçek .env git'e eklenmez)
+│   ├── routers/
+│   │   ├── auth.py              # Kayıt, giriş, JWT (rate limit korumalı)
+│   │   ├── transactions.py      # Gelir/gider CRUD
+│   │   ├── categories.py        # Kategori yönetimi
+│   │   ├── recurring.py         # Tekrarlayan işlemler
+│   │   ├── scan.py              # Fiş tarama
+│   │   └── advisor.py           # AI finansal danışman sohbeti
+│   └── services/
+│       ├── receipt_pipeline.py  # Fiş tarama orkestratörü (Facade)
+│       ├── llm_parser.py        # Groq/Gemini Vision + metin ayrıştırma
+│       ├── ocr_service.py       # EasyOCR yedek katmanı
+│       ├── image_processing.py  # Görüntü ön işleme
+│       ├── advisor_service.py   # Finansal özet + AI sohbet
+│       └── rate_limiter.py      # Bellek-içi istek sınırlama
 │
-└── finasist/             # Flutter mobil uygulama
+└── finasist/                    # Flutter uygulaması (mobil/web/masaüstü)
     └── lib/
-        ├── main.dart     # Uygulama giriş noktası ve routing
-        ├── models/       # Veri modelleri (User, Category, Transaction)
-        ├── providers/    # State yönetimi (Auth, Transaction, Theme)
-        ├── services/     # API iletişim katmanı
-        ├── screens/      # Uygulama ekranları
-        └── utils/        # Yardımcı araçlar
+        ├── main.dart             # Giriş noktası, tema, kilit ekranı yönlendirmesi
+        ├── models/                # User, Category, Transaction
+        ├── providers/             # Auth, Transaction, Settings state
+        ├── services/              # api_service.dart, pdf_report_service.dart
+        ├── theme/                 # AppTheme (açık/koyu, context-duyarlı)
+        ├── screens/               # auth, home, scan, ai_advisor, reports, settings, ...
+        └── utils/
 ```
+
+---
 
 ## Kullanılan Teknolojiler
 
 ### Backend
-| Teknoloji | Versiyon | Açıklama |
-|-----------|----------|----------|
-| Python | 3.10+ | Programlama dili |
-| FastAPI | 0.115.0 | REST API framework |
-| PostgreSQL | 16 | İlişkisel veritabanı |
-| SQLAlchemy | 2.0.30 | ORM (Object Relational Mapping) |
-| Pydantic | 2.7.0 | Veri doğrulama ve serileştirme |
-| python-jose | 3.3.0 | JWT token oluşturma ve doğrulama |
-| bcrypt | 5.0.0 | Şifre hashleme |
-| Uvicorn | 0.30.0 | ASGI sunucusu |
+| Teknoloji | Açıklama |
+|-----------|----------|
+| FastAPI | REST API framework |
+| PostgreSQL + SQLAlchemy 2.x | Veritabanı / ORM |
+| Pydantic v2 | Veri doğrulama (uzunluk/aralık kısıtları dahil) |
+| python-jose + bcrypt | JWT kimlik doğrulama, parola hashleme |
+| EasyOCR + OpenCV | Yedek OCR pipeline'ı |
+| Groq API (Llama 3.3 70B / Llama 4 Scout Vision) | Fiş ayrıştırma + AI danışman |
+| httpx | Asenkron HTTP istemcisi |
 
-### Frontend (Mobil)
-| Teknoloji | Versiyon | Açıklama |
-|-----------|----------|----------|
-| Flutter | 3.x | Cross-platform UI framework |
-| Dart | 3.9+ | Programlama dili |
-| Provider | 6.1.5 | State management |
-| GoRouter | 17.1.0 | Sayfa yönlendirme |
-| http | 1.6.0 | HTTP istemcisi |
-| SharedPreferences | 2.5.4 | Yerel veri saklama (token) |
-| fl_chart | 1.1.1 | Grafik ve pasta chart |
-| Google Fonts | 8.0.2 | Tipografi (Inter font) |
+### Frontend
+| Teknoloji | Açıklama |
+|-----------|----------|
+| Flutter / Dart | Cross-platform UI |
+| Provider | State management |
+| http | API iletişimi |
+| fl_chart | Grafikler |
+| pdf + printing | PDF rapor oluşturma/indirme |
+| file_picker | Fiş görseli seçimi |
+| Google Fonts (Inter) | Tipografi |
 
 ---
 
 ## Kurulum
 
 ### Gereksinimler
-
-- **Python 3.10+** - [python.org](https://www.python.org/downloads/)
-- **PostgreSQL 16** - [postgresql.org](https://www.postgresql.org/download/)
-- **Flutter SDK 3.x** - [flutter.dev](https://docs.flutter.dev/get-started/install)
-- **Git** - [git-scm.com](https://git-scm.com/)
+- **Python 3.10+**
+- **PostgreSQL 16**
+- **Flutter SDK 3.x**
 
 ### 1. Projeyi Klonlayın
 
 ```bash
-git clone https://github.com/KULLANICI_ADI/finasist.git
-cd finasist
+git clone https://github.com/BerhakTanyildizi/FinAsist.git
+cd FinAsist
 ```
 
 ### 2. Backend Kurulumu
 
 ```bash
 cd backend
-
-# Sanal ortam oluştur ve aktif et
 python -m venv venv
 
 # Windows:
@@ -89,13 +110,10 @@ python -m venv venv
 # macOS/Linux:
 source venv/bin/activate
 
-# Bağımlılıkları yükle
 pip install -r requirements.txt
 ```
 
 ### 3. PostgreSQL Veritabanı
-
-pgAdmin veya psql ile veritabanını oluşturun:
 
 ```sql
 CREATE DATABASE finasist_db;
@@ -103,105 +121,81 @@ CREATE DATABASE finasist_db;
 
 ### 4. Ortam Değişkenleri
 
-`backend/` klasöründe `.env` dosyası oluşturun:
-
-```env
-DATABASE_URL=postgresql://postgres:SIFRENIZ@localhost:5432/finasist_db
-SECRET_KEY=kendi-gizli-anahtariniz
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-```
-
-> **Not:** `SIFRENIZ` kısmını kendi PostgreSQL şifrenizle değiştirin.
-
-### 5. Veritabanı Tablolarını Oluştur ve Kategorileri Ekle
+`backend/.env.example` dosyasını `backend/.env` olarak kopyalayın ve gerçek değerlerle doldurun:
 
 ```bash
-# Tabloları oluşturur (ilk çalıştırmada otomatik)
-python -c "from database import engine, Base; from models import *; Base.metadata.create_all(bind=engine)"
+cp .env.example .env   # Windows: copy .env.example .env
+```
 
-# Varsayılan kategorileri ekle
-python seed_data.py
+```env
+DATABASE_URL=postgresql://<kullanici>:<sifre>@localhost:5432/finasist_db
+SECRET_KEY=               # python -c "import secrets; print(secrets.token_hex(32))"
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+GEMINI_API_KEY=           # aistudio.google.com (opsiyonel)
+GEMINI_MODEL=gemini-2.0-flash-lite
+GROQ_API_KEY=              # console.groq.com (fiş tarama + AI danışman için gerekli)
+ALLOWED_ORIGIN_REGEX=      # opsiyonel; boşsa sadece localhost/127.0.0.1 kabul edilir
+```
+
+> **Güvenlik:** `SECRET_KEY` tanımlı değilse uygulama başlamayı reddeder (fail-fast). `.env` dosyasını ASLA commit etmeyin veya başka dökümantasyon dosyalarına (README, CLAUDE.md vb.) yapıştırmayın — sadece placeholder kullanın.
+
+### 5. Veritabanı Tabloları ve Varsayılan Veriler
+
+```bash
+python seed_data.py   # Global kategoriler
+python seed.py        # (opsiyonel) Test kullanıcısı
 ```
 
 ### 6. Backend'i Başlat
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --reload
 ```
 
-API dokümantasyonu: [http://localhost:8000/docs](http://localhost:8000/docs)
+API dokümantasyonu: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ### 7. Flutter Kurulumu
 
 ```bash
 cd finasist
-
-# Bağımlılıkları yükle
 flutter pub get
-
-# Uygulamayı çalıştır
-flutter run
+flutter run -d chrome   # veya: flutter run (masaüstü/mobil)
 ```
 
-> **API Adresi:** `lib/services/api_service.dart` dosyasındaki `_baseUrl` değişkenini ortamınıza göre ayarlayın:
-> - Android Emülatör: `http://10.0.2.2:8000`
-> - Web (Chrome): `http://localhost:8000`
-> - Fiziksel Cihaz: `http://BILGISAYAR_IP:8000`
+API adresi `lib/services/api_service.dart` içinde `baseUrl` sabitiyle tanımlıdır (varsayılan: `http://127.0.0.1:8000`).
 
 ---
 
 ## API Endpoint'leri
 
-### Kimlik Doğrulama
-| Metot | Endpoint | Açıklama |
-|-------|----------|----------|
-| POST | `/auth/register` | Yeni kullanıcı kaydı |
-| POST | `/auth/login` | Giriş yap, JWT token al |
-| GET | `/auth/me` | Giriş yapan kullanıcı bilgileri |
+| Grup | Endpoint | Açıklama |
+|------|----------|----------|
+| Auth | `POST /auth/register` | Kayıt (rate limit: 5/dk) — parola min. 8 karakter |
+| Auth | `POST /auth/login` | Giriş, JWT token (rate limit: 10/dk) |
+| Auth | `GET /auth/me` | Giriş yapan kullanıcı bilgisi |
+| İşlemler | `GET\|POST /transactions/`, `GET\|PUT\|DELETE /transactions/{id}` | Gelir/gider CRUD |
+| Kategoriler | `GET\|POST /categories/`, `DELETE /categories/{id}` | Kategori yönetimi |
+| Düzenli İşlemler | `GET\|POST /recurring/`, `DELETE /recurring/{id}` | Tekrarlayan işlemler |
+| Fiş Tarama | `POST /scan/upload`, `POST /scan/base64` | Görsel → yapılandırılmış veri (max 10MB) |
+| AI Danışman | `POST /advisor/chat` | Finansal veriye dayalı sohbet |
 
-### İşlemler (JWT gerekli)
-| Metot | Endpoint | Açıklama |
-|-------|----------|----------|
-| GET | `/transactions/` | Tüm işlemleri listele |
-| POST | `/transactions/` | Yeni gelir/gider ekle |
-| GET | `/transactions/{id}` | Tek işlem detayı |
-| PUT | `/transactions/{id}` | İşlemi güncelle |
-| DELETE | `/transactions/{id}` | İşlemi sil |
+Tüm endpoint'ler (auth hariç) `Authorization: Bearer <token>` ister.
 
 ---
 
-## Veritabanı Şeması
+## Güvenlik
 
-```
-users                    categories              transactions
-├── id (PK)              ├── id (PK)             ├── id (PK)
-├── full_name            ├── name                ├── user_id (FK → users)
-├── email (UNIQUE)       ├── icon_name           ├── category_id (FK → categories)
-├── hashed_password      └── type                ├── amount
-└── created_at               (income/expense)    ├── type (income/expense)
-                                                 ├── merchant
-                                                 ├── description
-                                                 ├── transaction_date
-                                                 └── created_at
-```
-
----
-
-## Uygulama Ekranları
-
-| Ekran | Açıklama |
-|-------|----------|
-| Giriş / Kayıt | JWT tabanlı kimlik doğrulama |
-| Ana Sayfa (Özet) | Bakiye, gelir/gider özeti, son işlemler, AI tavsiyeleri |
-| İşlem Ekle | Gelir veya gider kaydı (kategori, tutar, işyeri, açıklama, tarih) |
-| İşlem Detay | Detay görüntüleme, düzenleme ve silme |
-| Raporlar | Kategori bazlı pasta grafik, harcama analizi |
-| Fiş Tara | Fatura/fiş tarama (yapay zeka entegrasyonu planlanıyor) |
-| Profil & Ayarlar | Kullanıcı bilgileri, tema değiştirme, çıkış |
+- JWT (HS256), bcrypt parola hash'leme, kullanıcı bazlı veri izolasyonu (her sorgu `user_id` filtreli)
+- Parola politikası: minimum 8 karakter (backend + frontend doğrulaması eşleşir)
+- `/auth/login` ve `/auth/register` için IP başına istek sınırlama (rate limiting)
+- CORS varsayılan olarak `localhost`/`127.0.0.1` ile sınırlı; üretimde `ALLOWED_ORIGIN_REGEX` ile yapılandırılır
+- İstek/dosya boyutu sınırları (global 15MB, fiş yükleme 10MB) — DoS koruması
+- Hata yanıtlarında iç sistem detayları (stack trace, API URL'leri) istemciye sızdırılmaz, sadece sunucu logunda tutulur
+- Dış servis API anahtarları (Gemini/Groq) yalnızca HTTP header üzerinden gönderilir, URL/log'a yazılmaz
 
 ---
 
 ## Lisans
 
-Bu proje TUBİTAK 2209-A programı kapsamında geliştirilmiştir.
+Bu proje TÜBİTAK 2209-A programı kapsamında geliştirilmiştir.

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// API hataları için özel Exception sınıfı
@@ -13,11 +15,58 @@ class ApiException implements Exception {
 class ApiService {
   // Bilgisayardan çalıştırılan Chrome Web sürümü için yerel IP (localhost)
   static const String baseUrl = 'http://127.0.0.1:8000';
-  
-  // Kullanıcı Girişi
-  static Future<bool> login({required String email, required String password}) async {
+
+  /// Backend'in 4xx/5xx yanıtlarındaki `detail` alanını okunabilir bir
+  /// Türkçe mesaja çevirir. FastAPI/Pydantic doğrulama hataları (422)
+  /// `detail: [{"loc": [...], "msg": "...", "type": "...", "ctx": {...}}]`
+  /// formatında gelir; düz hatalar (400/401) `detail: "..."` formatındadır.
+  static String _extractErrorMessage(http.Response response) {
     try {
-      final response = await http.post(
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      final detail = body is Map ? body['detail'] : null;
+
+      if (detail is String) return detail;
+
+      if (detail is List && detail.isNotEmpty) {
+        final first = detail.first;
+        final loc = first['loc'];
+        final fieldRaw = (loc is List && loc.isNotEmpty) ? loc.last.toString() : '';
+        final field = _fieldNameTr(fieldRaw);
+        final type = first['type']?.toString() ?? '';
+        final ctx = first['ctx'];
+
+        if (type == 'string_too_short' && ctx is Map && ctx['min_length'] != null) {
+          return '$field en az ${ctx['min_length']} karakter olmalı.';
+        }
+        if (type == 'string_too_long' && ctx is Map && ctx['max_length'] != null) {
+          return '$field en fazla ${ctx['max_length']} karakter olabilir.';
+        }
+        if (type.contains('email')) {
+          return 'Geçerli bir e-posta adresi girin.';
+        }
+        final msg = first['msg']?.toString();
+        return (msg != null && msg.isNotEmpty) ? '$field: $msg' : 'Girdiğiniz bilgiler geçersiz.';
+      }
+    } catch (_) {
+      // JSON parse edilemedi, aşağıdaki genel mesaja düş
+    }
+    return 'Bir hata oluştu (${response.statusCode}).';
+  }
+
+  static String _fieldNameTr(String field) {
+    switch (field) {
+      case 'password': return 'Şifre';
+      case 'email': return 'E-posta';
+      case 'full_name': return 'Ad Soyad';
+      default: return field.isEmpty ? 'Girdi' : field;
+    }
+  }
+
+  // Kullanıcı Girişi — başarısızlıkta backend'in gerçek hata mesajıyla ApiException fırlatır.
+  static Future<void> login({required String email, required String password}) async {
+    final http.Response response;
+    try {
+      response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -25,27 +74,26 @@ class ApiService {
           'password': password,
         }),
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final token = data['access_token'];
-        
-        // Token'ı cihaza kaydet (SharedPrefs)
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', token);
-        return true;
-      }
-      return false;
     } catch (e) {
-      print('Login Exception: $e');
-      return false;
+      debugPrint('Login Exception: $e');
+      throw const ApiException('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
     }
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      final token = data['access_token'];
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', token);
+      return;
+    }
+    throw ApiException(_extractErrorMessage(response));
   }
 
-  // Kullanıcı Kaydı
-  static Future<bool> register({required String fullName, required String email, required String password}) async {
+  // Kullanıcı Kaydı — başarısızlıkta backend'in gerçek hata mesajıyla ApiException fırlatır.
+  static Future<void> register({required String fullName, required String email, required String password}) async {
+    final http.Response response;
     try {
-      final response = await http.post(
+      response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
@@ -54,12 +102,13 @@ class ApiService {
           'password': password,
         }),
       );
-
-      return response.statusCode == 201;
     } catch (e) {
-      print('Register Exception: $e');
-      return false;
+      debugPrint('Register Exception: $e');
+      throw const ApiException('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
     }
+
+    if (response.statusCode == 201) return;
+    throw ApiException(_extractErrorMessage(response));
   }
 
   // Çıkış Yap
@@ -104,12 +153,49 @@ class ApiService {
 
       return response.statusCode == 201;
     } catch (e) {
-      print('Add Transaction Exception: $e');
+      debugPrint('Add Transaction Exception: $e');
       return false;
     }
   }
 
-  // İşlem silme isteği
+  static Future<bool> updateTransaction({
+    required int transactionId,
+    int? categoryId,
+    double? amount,
+    String? type,
+    String? merchant,
+    String? description,
+    String? transactionDate,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+      if (token == null) return false;
+
+      final body = <String, dynamic>{};
+      if (categoryId != null) body['category_id'] = categoryId;
+      if (amount != null) body['amount'] = amount;
+      if (type != null) body['type'] = type;
+      if (merchant != null) body['merchant'] = merchant;
+      if (description != null) body['description'] = description;
+      if (transactionDate != null) body['transaction_date'] = transactionDate;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/transactions/$transactionId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Update Transaction Exception: $e');
+      return false;
+    }
+  }
+
   static Future<bool> deleteTransaction(int transactionId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -128,7 +214,7 @@ class ApiService {
       // İşlem yoksa veya silindiyse 204 No Content veya 200 döner
       return response.statusCode == 204 || response.statusCode == 200;
     } catch (e) {
-      print('Delete Transaction Exception: $e');
+      debugPrint('Delete Transaction Exception: $e');
       return false;
     }
   }
@@ -168,7 +254,7 @@ class ApiService {
 
       return response.statusCode == 201;
     } catch (e) {
-      print('Add Recurring Exception: $e');
+      debugPrint('Add Recurring Exception: $e');
       return false;
     }
   }
@@ -197,7 +283,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Get Transactions Exception: $e');
+      debugPrint('Get Transactions Exception: $e');
       return [];
     }
   }
@@ -225,7 +311,7 @@ class ApiService {
       }
       return [];
     } catch (e) {
-      print('Get Categories Exception: $e');
+      debugPrint('Get Categories Exception: $e');
       return [];
     }
   }
@@ -259,7 +345,7 @@ class ApiService {
       }
       return null;
     } catch (e) {
-      print('Create Category Exception: $e');
+      debugPrint('Create Category Exception: $e');
       return null;
     }
   }
@@ -281,8 +367,74 @@ class ApiService {
 
       return response.statusCode == 204;
     } catch (e) {
-      print('Delete Category Exception: $e');
+      debugPrint('Delete Category Exception: $e');
       return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> scanReceiptBase64(String base64Image) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+      if (token == null) return null;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/scan/base64'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'image_base64': base64Image}),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+      debugPrint('Scan Receipt Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Scan Receipt Exception: $e');
+      return null;
+    }
+  }
+
+  /// Multipart/form-data ile fiş görüntüsü yükler (dosya seçici için)
+  static Future<Map<String, dynamic>?> scanReceiptFile(List<int> fileBytes, String fileName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+      if (token == null) return null;
+
+      final ext = fileName.split('.').last.toLowerCase();
+      final mimeTypes = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'webp': 'image/webp',
+      };
+      final contentType = mimeTypes[ext] ?? 'image/jpeg';
+
+      final uri = Uri.parse('$baseUrl/scan/upload');
+      final request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..files.add(http.MultipartFile.fromBytes(
+          'file',
+          fileBytes,
+          filename: fileName,
+          contentType: MediaType.parse(contentType),
+        ));
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(utf8.decode(response.bodyBytes));
+      }
+      debugPrint('Scan File Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Scan File Exception: $e');
+      return null;
     }
   }
 
@@ -314,6 +466,41 @@ class ApiService {
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+  }
+
+  /// AI Finansal Danışman ile sohbet eder.
+  /// history: [{'role': 'user'|'assistant', 'content': '...'}] (eskiden yeniye sıralı)
+  static Future<String?> sendAdvisorMessage(
+    String message,
+    List<Map<String, String>> history,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('auth_token');
+      if (token == null) return null;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/advisor/chat'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'message': message,
+          'history': history,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return data['reply'] as String?;
+      }
+      debugPrint('Advisor Chat Error: ${response.statusCode} - ${response.body}');
+      return null;
+    } catch (e) {
+      debugPrint('Advisor Chat Exception: $e');
+      return null;
+    }
   }
 
   // Mevcut kullanıcı bilgisini getirir

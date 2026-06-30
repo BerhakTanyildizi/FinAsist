@@ -5,8 +5,10 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../utils/category_icons.dart';
 import '../main_layout.dart';
 import '../transactions/transactions_screen.dart';
+import '../scan/scan_receipt_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,16 +26,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     // Tüm uygulama genelindeki provider'ı dinliyoruz
     final provider = context.watch<TransactionProvider>();
-    
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(CupertinoIcons.settings, color: AppTheme.textSecondary),
-          onPressed: () => MainLayoutScreen.changeTab(context, 4),
+          icon: Icon(CupertinoIcons.settings, color: AppTheme.textSecondaryOf(context)),
+          onPressed: () => MainLayoutScreen.changeTab(context, 5),
         ),
         title: const Text('Kişisel Muhasebe'),
       ),
-      body: provider.isLoading 
+      body: provider.isLoading
         ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryPurple))
         : RefreshIndicator(
             onRefresh: provider.loadData,
@@ -44,17 +46,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Hesap Bakiye Kartı (Provider'dan gelen güncel bakiye verilecek)
-                  _buildBalanceCard(provider.totalBalance, context.watch<SettingsProvider>().currencySymbol),
+                  _buildBalanceCard(context, provider.totalBalance, context.watch<SettingsProvider>().currencySymbol),
                   const SizedBox(height: 16),
-                  
+
                   // Hızlı İşlemler Kartı
                   _buildQuickActionsCard(context),
                   const SizedBox(height: 16),
-                  
+
                   // Trend Analizi Kartı
                   _buildTrendAnalysisCard(context, provider),
                   const SizedBox(height: 16),
-                  
+
                   // Son İşlemler Kartı
                   _buildRecentTransactionsCard(context, provider.transactions),
                   const SizedBox(height: 32),
@@ -65,42 +67,44 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBalanceCard(double balance, String currencySymbol) {
+  Widget _buildBalanceCard(BuildContext context, double balance, String currencySymbol) {
     // Bakiyemizi formatlıyoruz
     String balanceString = balance.toStringAsFixed(2);
     List<String> parts = balanceString.split('.');
     String integerPart = parts[0];
     String decimalPart = parts.length > 1 ? parts[1] : '00';
+    final textPrimary = AppTheme.textPrimaryOf(context);
+    final textSecondary = AppTheme.textSecondaryOf(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: AppTheme.cardColorOf(context),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Hesaplarım', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-              Icon(CupertinoIcons.chevron_right, color: AppTheme.textSecondary, size: 18),
+              Text('Hesaplarım', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary)),
+              Icon(CupertinoIcons.chevron_right, color: textSecondary, size: 18),
             ],
           ),
           const SizedBox(height: 24),
-          const Text('Genel', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+          Text('Genel', style: TextStyle(color: textSecondary, fontSize: 14)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(currencySymbol, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-              Text(integerPart, style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold, height: 1.0)),
-              Text(',$decimalPart', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(currencySymbol, style: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
+              Text(integerPart, style: TextStyle(color: textPrimary, fontSize: 48, fontWeight: FontWeight.bold, height: 1.0)),
+              Text(',$decimalPart', style: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 16),
-          Text('Son Güncelleme: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          Text('Son Güncelleme: ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}', style: TextStyle(color: textSecondary, fontSize: 12)),
           const SizedBox(height: 16),
           Container(
             width: 8,
@@ -116,10 +120,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickActionsCard(BuildContext context) {
+    final textPrimary = AppTheme.textPrimaryOf(context);
+    final textSecondary = AppTheme.textSecondaryOf(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: AppTheme.cardColorOf(context),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -133,10 +139,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: Colors.brown.shade900,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.flash_on, color: AppTheme.textSecondary, size: 16),
+                child: Icon(Icons.flash_on, color: textSecondary, size: 16),
               ),
               const SizedBox(width: 12),
-              const Text('Hızlı İşlemler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+              Text('Hızlı İşlemler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary)),
             ],
           ),
           const SizedBox(height: 20),
@@ -145,38 +151,45 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildQuickActionItem(
+                context: context,
                 icon: CupertinoIcons.doc_text_viewfinder,
                 color: AppTheme.incomeGreen,
-                bgColor: AppTheme.incomeGreen.withOpacity(0.1),
+                bgColor: AppTheme.incomeGreen.withValues(alpha: 0.1),
                 label: 'Evrak Tara',
                 isAi: true,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Evrak tarama özelliği yakında eklenecek!')));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ScanReceiptScreen()),
+                  );
                 },
               ),
               _buildQuickActionItem(
+                context: context,
                 icon: CupertinoIcons.chat_bubble_2,
                 color: Colors.brown.shade300,
-                bgColor: Colors.brown.shade900.withOpacity(0.5),
+                bgColor: Colors.brown.shade900.withValues(alpha: 0.5),
                 label: 'AI Finansal\nDanışman',
                 isAi: true,
                 onTap: () => MainLayoutScreen.changeTab(context, 1),
               ),
               _buildQuickActionItem(
+                context: context,
                 icon: CupertinoIcons.add,
                 color: AppTheme.starYellow,
-                bgColor: AppTheme.starYellow.withOpacity(0.1),
+                bgColor: AppTheme.starYellow.withValues(alpha: 0.1),
                 label: 'Gelir/Gider Ekle',
                 isAi: false,
-                onTap: () => MainLayoutScreen.changeTab(context, 2),
+                onTap: () => MainLayoutScreen.changeTab(context, 3),
               ),
               _buildQuickActionItem(
+                context: context,
                 icon: CupertinoIcons.chart_pie,
                 color: Colors.blueAccent,
-                bgColor: Colors.blueAccent.withOpacity(0.1),
+                bgColor: Colors.blueAccent.withValues(alpha: 0.1),
                 label: 'Finansal\nRaporlar',
                 isAi: false,
-                onTap: () => MainLayoutScreen.changeTab(context, 3),
+                onTap: () => MainLayoutScreen.changeTab(context, 4),
               ),
             ],
           ),
@@ -186,6 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickActionItem({
+    required BuildContext context,
     required IconData icon,
     required Color color,
     required Color bgColor,
@@ -193,6 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isAi,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -208,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   decoration: BoxDecoration(
                     color: bgColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: color.withOpacity(0.3), width: 1),
+                    border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
                   ),
                   child: Icon(icon, color: color, size: 28),
                 ),
@@ -219,16 +234,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
+                        color: AppTheme.cardColorOf(context),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        border: Border.all(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(CupertinoIcons.sparkles, color: Colors.white, size: 8),
-                          SizedBox(width: 2),
-                          Text('AI', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                          Icon(CupertinoIcons.sparkles, color: AppTheme.textPrimaryOf(context), size: 8),
+                          const SizedBox(width: 2),
+                          Text('AI', style: TextStyle(color: AppTheme.textPrimaryOf(context), fontSize: 8, fontWeight: FontWeight.bold)),
                         ],
                       ),
                     ),
@@ -239,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11, height: 1.2),
+              style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 11, height: 1.2),
             ),
           ],
         ),
@@ -248,10 +263,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTrendAnalysisCard(BuildContext context, TransactionProvider provider) {
+    final textPrimary = AppTheme.textPrimaryOf(context);
+    final textSecondary = AppTheme.textSecondaryOf(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: AppTheme.cardColorOf(context),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -261,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               const Icon(CupertinoIcons.chart_bar_alt_fill, color: Colors.brown, size: 20),
               const SizedBox(width: 8),
-              const Text('Trend Analizi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+              Text('Trend Analizi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary)),
             ],
           ),
           const SizedBox(height: 16),
@@ -274,10 +292,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _selectedPeriod == 'Gün' ? Colors.brown.shade900.withOpacity(0.5) : Colors.transparent,
+                    color: _selectedPeriod == 'Gün' ? Colors.brown.shade900.withValues(alpha: 0.5) : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('Gün', style: TextStyle(color: _selectedPeriod == 'Gün' ? Colors.white : AppTheme.textSecondary, fontSize: 13)),
+                  child: Text('Gün', style: TextStyle(color: _selectedPeriod == 'Gün' ? textPrimary : textSecondary, fontSize: 13)),
                 ),
               ),
               const SizedBox(width: 16),
@@ -286,10 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _selectedPeriod == 'Hafta' ? Colors.brown.shade900.withOpacity(0.5) : Colors.transparent,
+                    color: _selectedPeriod == 'Hafta' ? Colors.brown.shade900.withValues(alpha: 0.5) : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('Hafta', style: TextStyle(color: _selectedPeriod == 'Hafta' ? Colors.white : AppTheme.textSecondary, fontSize: 13)),
+                  child: Text('Hafta', style: TextStyle(color: _selectedPeriod == 'Hafta' ? textPrimary : textSecondary, fontSize: 13)),
                 ),
               ),
               const SizedBox(width: 16),
@@ -298,10 +316,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _selectedPeriod == 'Ay' ? Colors.brown.shade900.withOpacity(0.5) : Colors.transparent,
+                    color: _selectedPeriod == 'Ay' ? Colors.brown.shade900.withValues(alpha: 0.5) : Colors.transparent,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('Ay', style: TextStyle(color: _selectedPeriod == 'Ay' ? Colors.white : AppTheme.textSecondary, fontSize: 13)),
+                  child: Text('Ay', style: TextStyle(color: _selectedPeriod == 'Ay' ? textPrimary : textSecondary, fontSize: 13)),
                 ),
               ),
             ],
@@ -325,12 +343,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.backgroundDark.withOpacity(0.8),
+                      color: AppTheme.backgroundOf(context).withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1)),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('Henüz veri yok', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    child: Text('Henüz veri yok', style: TextStyle(color: textSecondary, fontSize: 12)),
                   )
                 : LineChart(
                     LineChartData(
@@ -359,7 +377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               }
                               return Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(text, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+                                child: Text(text, style: TextStyle(color: textSecondary, fontSize: 10)),
                               );
                             },
                           ),
@@ -391,9 +409,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.backgroundDark : Colors.transparent,
+          color: isSelected ? AppTheme.backgroundOf(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isSelected ? color.withOpacity(0.5) : Colors.transparent),
+          border: Border.all(color: isSelected ? color.withValues(alpha: 0.5) : Colors.transparent),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -407,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
+            Text(label, style: TextStyle(color: AppTheme.textPrimaryOf(context), fontSize: 12)),
           ],
         ),
       ),
@@ -415,10 +433,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentTransactionsCard(BuildContext context, List<dynamic> transactions) {
+    final textPrimary = AppTheme.textPrimaryOf(context);
+    final textSecondary = AppTheme.textSecondaryOf(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: AppTheme.cardColorOf(context),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -426,11 +446,11 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(CupertinoIcons.clock, color: AppTheme.primaryPurple, size: 20),
-                  SizedBox(width: 8),
-                  Text('Son İşlemler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                  const Icon(CupertinoIcons.clock, color: AppTheme.primaryPurple, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Son İşlemler', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary)),
                 ],
               ),
               GestureDetector(
@@ -443,14 +463,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.brown.shade900.withOpacity(0.3),
+                    color: Colors.brown.shade900.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Text('Tümünü Gör', style: TextStyle(color: Colors.white, fontSize: 12)),
-                      SizedBox(width: 4),
-                      Icon(CupertinoIcons.arrow_right, color: Colors.white, size: 12),
+                      Text('Tümünü Gör', style: TextStyle(color: textPrimary, fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Icon(CupertinoIcons.arrow_right, color: textPrimary, size: 12),
                     ],
                   ),
                 ),
@@ -464,16 +484,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.backgroundDark,
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundOf(context),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(CupertinoIcons.doc_text, color: AppTheme.primaryPurple, size: 32),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Henüz işlem yok', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                  Text('Henüz işlem yok', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textPrimary)),
                   const SizedBox(height: 8),
-                  const Text('İlk işleminizi ekleyin ve finansal takibinizi başlatın', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  Text('İlk işleminizi ekleyin ve finansal takibinizi başlatın', textAlign: TextAlign.center, style: TextStyle(color: textSecondary, fontSize: 13)),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -482,63 +502,71 @@ class _HomeScreenState extends State<HomeScreen> {
             ...transactions.take(5).map((tx) {
               bool isIncome = tx['type'] == 'income';
               double amt = double.parse(tx['amount'].toString());
-              String category = (tx['category'] ?? '').toString();
-              
-              if (category.startsWith('{')) {
-                try {
-                  RegExp regex = RegExp(r"name:\s*'([^']+)'|name:\s*([a-zA-ZğüşıöçĞÜŞİÖÇ/]+)");
-                  var match = regex.firstMatch(category);
-                  if (match != null) {
-                     category = match.group(1) ?? match.group(2) ?? category;
-                  }
-                } catch (_) {}
+              String description = (tx['description'] ?? '').toString().trim();
+
+              final catObj = tx['category'];
+              String category = '';
+              String? iconName;
+              if (catObj is Map) {
+                category = catObj['name'] ?? '';
+                iconName = catObj['icon_name'];
               }
-              if (category.isEmpty || category.startsWith('{')) {
-                 category = isIncome ? 'Gelir' : 'Gider';
+              if (category.isEmpty) {
+                category = isIncome ? 'Gelir' : 'Gider';
               }
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isIncome ? AppTheme.incomeGreen.withOpacity(0.1) : AppTheme.expenseRed.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            isIncome ? CupertinoIcons.arrow_down_left : CupertinoIcons.cart_fill, 
-                            color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed, 
-                            size: 20
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              return GestureDetector(
+                onTap: () => _showTransactionDetail(context, tx),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
                           children: [
-                            Text(category, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
-                            const SizedBox(height: 4),
-                            Text(tx['transaction_date'] ?? '', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isIncome ? AppTheme.incomeGreen.withValues(alpha: 0.1) : AppTheme.expenseRed.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                getCategoryIcon(iconName),
+                                color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed,
+                                size: 20
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(category, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary)),
+                                  const SizedBox(height: 4),
+                                  if (description.isNotEmpty)
+                                    Text(description, style: TextStyle(color: textSecondary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Text(tx['transaction_date'] ?? '', style: TextStyle(color: textSecondary, fontSize: 11)),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                    Text(
-                      '${isIncome ? '+' : '-'}${amt.toStringAsFixed(2)} ${context.read<SettingsProvider>().currencySymbol}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        '${isIncome ? '+' : '-'}${amt.toStringAsFixed(2)} ${context.read<SettingsProvider>().currencySymbol}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
-            }).toList(),
+            }),
           const SizedBox(height: 8),
         ],
       ),
@@ -547,7 +575,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<LineChartBarData> _generateLineBars(List<dynamic> txs) {
     DateTime now = DateTime.now();
     int numBuckets = 0;
-    
+
     if (_selectedPeriod == 'Gün') numBuckets = 24;      // Son 24 saat
     else if (_selectedPeriod == 'Hafta') numBuckets = 7;     // Son 7 gün
     else if (_selectedPeriod == 'Ay') numBuckets = 30;       // Son 30 gün
@@ -560,9 +588,9 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var tx in txs) {
       if (tx['transaction_date'] == null) continue;
       DateTime txDate = DateTime.parse(tx['transaction_date']);
-      
+
       int bucketIndex = -1;
-      
+
       if (_selectedPeriod == 'Gün') {
         if (txDate.year == now.year && txDate.month == now.month && txDate.day == now.day) {
           bucketIndex = txDate.hour;
@@ -593,12 +621,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     List<LineChartBarData> bars = [];
-    
+
     Color getColorForType(String type) {
       switch (type) {
         case 'income': return AppTheme.incomeGreen;
         case 'expense': return AppTheme.expenseRed;
-        default: return Colors.white;
+        default: return AppTheme.textSecondary;
       }
     }
 
@@ -608,7 +636,7 @@ class _HomeScreenState extends State<HomeScreen> {
       for (int i = 0; i < numBuckets; i++) {
         spots.add(FlSpot(i.toDouble(), sums[i]));
       }
-      
+
       bars.add(
         LineChartBarData(
           spots: spots,
@@ -619,12 +647,12 @@ class _HomeScreenState extends State<HomeScreen> {
           dotData: const FlDotData(show: false),
           belowBarData: BarAreaData(
             show: true,
-            color: getColorForType(type).withOpacity(0.15),
+            color: getColorForType(type).withValues(alpha: 0.15),
           ),
         )
       );
     }
-    
+
     if (bars.isEmpty) {
       bars.add(
         LineChartBarData(
@@ -635,5 +663,84 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return bars;
+  }
+
+  void _showTransactionDetail(BuildContext context, dynamic tx) {
+    bool isIncome = tx['type'] == 'income';
+    double amt = double.parse(tx['amount'].toString());
+    String description = (tx['description'] ?? '').toString().trim();
+    String date = tx['transaction_date'] ?? '';
+    String merchant = (tx['merchant'] ?? '').toString().trim();
+    Color typeColor = isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed;
+    String currencySymbol = context.read<SettingsProvider>().currencySymbol;
+
+    final catObj = tx['category'];
+    String category = '';
+    String? iconName;
+    if (catObj is Map) {
+      category = catObj['name'] ?? '';
+      iconName = catObj['icon_name'];
+    }
+    if (category.isEmpty) category = isIncome ? 'Gelir' : 'Gider';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.backgroundOf(context),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)),
+                child: Icon(getCategoryIcon(iconName), color: typeColor, size: 32),
+              ),
+              const SizedBox(height: 16),
+              Text(category, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimaryOf(ctx))),
+              const SizedBox(height: 8),
+              Text(
+                '${isIncome ? '+' : '-'}${amt.toStringAsFixed(2)} $currencySymbol',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: typeColor),
+              ),
+              const SizedBox(height: 20),
+              _detailRow(ctx, CupertinoIcons.calendar, 'Tarih', date),
+              _detailRow(ctx, CupertinoIcons.tag_fill, 'Tür', isIncome ? 'Gelir' : 'Gider'),
+              if (merchant.isNotEmpty) _detailRow(ctx, CupertinoIcons.building_2_fill, 'Mağaza', merchant),
+              if (description.isNotEmpty) _detailRow(ctx, CupertinoIcons.doc_text_fill, 'Not', description),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _detailRow(BuildContext context, IconData icon, String label, String value) {
+    final textSecondary = AppTheme.textSecondaryOf(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: textSecondary, size: 18),
+          const SizedBox(width: 12),
+          Text('$label:', style: TextStyle(color: textSecondary, fontSize: 14)),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value, style: TextStyle(color: AppTheme.textPrimaryOf(context), fontSize: 14), textAlign: TextAlign.end)),
+        ],
+      ),
+    );
   }
 }

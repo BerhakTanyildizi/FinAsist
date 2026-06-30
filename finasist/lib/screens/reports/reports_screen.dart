@@ -5,6 +5,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/pdf_report_service.dart';
 import '../transactions/transactions_screen.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -16,6 +18,36 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   int _selectedTrendTab = 0; // 0 = Günlük, 1 = Haftalık
+  bool _isGeneratingPdf = false;
+
+  Future<void> _downloadPdfReport() async {
+    if (_isGeneratingPdf) return;
+    setState(() => _isGeneratingPdf = true);
+
+    try {
+      final provider = context.read<TransactionProvider>();
+      final settings = context.read<SettingsProvider>();
+      final auth = context.read<AuthProvider>();
+
+      await PdfReportService.generateAndShare(
+        transactions: provider.transactions,
+        currencySymbol: settings.currencySymbol,
+        userName: auth.user?.fullName ?? 'Finasist Kullanıcısı',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rapor PDF olarak oluşturuldu. ✅')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rapor oluşturulamadı: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isGeneratingPdf = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,27 +91,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
             },
           ),
           IconButton(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(CupertinoIcons.arrow_down_doc, color: AppTheme.starYellow),
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.expenseRed,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rapor indirme özelliği yakında eklenecektir.')));
-            }, // İndirme butonu
+            icon: _isGeneratingPdf
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.starYellow),
+                  )
+                : const Icon(CupertinoIcons.arrow_down_doc, color: AppTheme.starYellow),
+            onPressed: _isGeneratingPdf ? null : _downloadPdfReport,
+            tooltip: 'PDF olarak indir',
           ),
         ],
       ),
@@ -88,11 +108,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           children: [
             // 1. Trend Analizi Kartı
-            _buildLargeTrendCard(transactions),
+            _buildLargeTrendCard(context, transactions),
             const SizedBox(height: 16),
 
             // 2. Dönemsel Karşılaştırma Kartı
-            _buildComparisonCard(thisMonthIncome, thisMonthExpense, lastMonthIncome, lastMonthExpense),
+            _buildComparisonCard(context, thisMonthIncome, thisMonthExpense, lastMonthIncome, lastMonthExpense),
             const SizedBox(height: 80), // Fab padding
           ],
         ),
@@ -100,12 +120,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildLargeTrendCard(List<dynamic> transactions) {
+  Widget _buildLargeTrendCard(BuildContext context, List<dynamic> transactions) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: AppTheme.cardColorOf(context),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -119,18 +139,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppTheme.backgroundDark,
+                      color: AppTheme.backgroundOf(context),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(CupertinoIcons.graph_circle, color: Colors.blueAccent, size: 20),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Trend Analizi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                  Text('Trend Analizi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimaryOf(context))),
                 ],
               ),
               Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.backgroundDark,
+                  color: AppTheme.backgroundOf(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -146,7 +166,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           color: _selectedTrendTab == 0 ? Colors.brown.shade800 : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Günlük', style: TextStyle(color: _selectedTrendTab == 0 ? Colors.white : AppTheme.textSecondary, fontSize: 12)),
+                        // Seçili sekme her zaman koyu (brown.shade800) arkaplanlıdır, metin sabit beyaz kalmalı
+                        child: Text('Günlük', style: TextStyle(color: _selectedTrendTab == 0 ? Colors.white : AppTheme.textSecondaryOf(context), fontSize: 12)),
                       ),
                     ),
                     GestureDetector(
@@ -159,7 +180,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           color: _selectedTrendTab == 1 ? Colors.brown.shade800 : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text('Haftalık', style: TextStyle(color: _selectedTrendTab == 1 ? Colors.white : AppTheme.textSecondary, fontSize: 12)),
+                        // Seçili sekme her zaman koyu (brown.shade800) arkaplanlıdır, metin sabit beyaz kalmalı
+                        child: Text('Haftalık', style: TextStyle(color: _selectedTrendTab == 1 ? Colors.white : AppTheme.textSecondaryOf(context), fontSize: 12)),
                       ),
                     ),
                   ],
@@ -170,17 +192,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              _buildLegendDot('Gelir', AppTheme.incomeGreen),
+              _buildLegendDot('Gelir', AppTheme.incomeGreen, context),
               const SizedBox(width: 16),
-              _buildLegendDot('Gider', AppTheme.expenseRed),
+              _buildLegendDot('Gider', AppTheme.expenseRed, context),
             ],
           ),
           const SizedBox(height: 32),
-          
+
           // Büyük grafik alanı (fl_chart)
           SizedBox(
             height: 200,
-            child: transactions.isEmpty 
+            child: transactions.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -188,13 +210,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppTheme.backgroundDark,
+                          color: AppTheme.backgroundOf(context),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(CupertinoIcons.chart_bar_alt_fill, color: AppTheme.textSecondary, size: 28),
+                        child: Icon(CupertinoIcons.chart_bar_alt_fill, color: AppTheme.textSecondaryOf(context), size: 28),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Bu dönem için veri yok', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                      Text('Bu dönem için veri yok', style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 13)),
                     ],
                   ),
                 )
@@ -207,7 +229,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           return BarTooltipItem(
                             rod.toY.toStringAsFixed(0) + ' ${context.read<SettingsProvider>().currencySymbol}\n',
-                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            TextStyle(color: AppTheme.textPrimaryOf(context), fontWeight: FontWeight.bold),
                           );
                         },
                       ),
@@ -219,7 +241,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           showTitles: true,
                           reservedSize: 32, // Artırıldı ki "Hafta X" vb. kesilmesin
                           interval: 1,
-                          getTitlesWidget: (value, meta) => _getBottomTitles(value, meta, transactions),
+                          getTitlesWidget: (value, meta) => _getBottomTitles(value, meta, transactions, context),
                         ),
                       ),
                       leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -314,8 +336,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return result;
   }
 
-  Widget _getBottomTitles(double value, TitleMeta meta, List<dynamic> txs) {
-    const style = TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 10);
+  Widget _getBottomTitles(double value, TitleMeta meta, List<dynamic> txs, BuildContext context) {
+    final style = TextStyle(color: AppTheme.textSecondaryOf(context), fontWeight: FontWeight.bold, fontSize: 10);
     int intVal = value.toInt();
     
     var groups = _getGroupedData(txs);
@@ -367,7 +389,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return items;
   }
 
-  Widget _buildLegendDot(String label, Color color) {
+  Widget _buildLegendDot(String label, Color color, BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -377,21 +399,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            border: Border.all(color: color.withOpacity(0.5), width: 2),
+            border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
           ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+        Text(label, style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 12)),
       ],
     );
   }
 
-  Widget _buildComparisonCard(double tIncome, double tExpense, double lIncome, double lExpense) {
+  Widget _buildComparisonCard(BuildContext context, double tIncome, double tExpense, double lIncome, double lExpense) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
+        color: AppTheme.cardColorOf(context),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -402,17 +424,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.backgroundDark,
+                  color: AppTheme.backgroundOf(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(CupertinoIcons.arrow_right_arrow_left, color: Colors.orangeAccent, size: 20),
               ),
               const SizedBox(width: 12),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   Text('Dönemsel Karşılaştırma', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                   Text('Geçen aya göre', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                   Text('Dönemsel Karşılaştırma', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.textPrimaryOf(context))),
+                   Text('Geçen aya göre', style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 12)),
                 ],
               ),
             ],
@@ -420,9 +442,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _buildComparisonStatBox(true, tIncome, lIncome)),
+              Expanded(child: _buildComparisonStatBox(context, true, tIncome, lIncome)),
               const SizedBox(width: 16),
-              Expanded(child: _buildComparisonStatBox(false, tExpense, lExpense)),
+              Expanded(child: _buildComparisonStatBox(context, false, tExpense, lExpense)),
             ],
           ),
         ],
@@ -430,10 +452,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildComparisonStatBox(bool isIncome, double current, double lastMonth) {
+  Widget _buildComparisonStatBox(BuildContext context, bool isIncome, double current, double lastMonth) {
     Color color = isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed;
     String label = isIncome ? 'Gelir' : 'Gider';
     IconData icon = isIncome ? CupertinoIcons.arrow_up_right : CupertinoIcons.arrow_down_right;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Yüzdesel farkı hesapla
     double percentage = 0;
@@ -442,15 +465,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } else if (current > 0) {
       percentage = 100; // Geçen ay 0, bu ay veri varsa %100 arttı
     }
-    
+
     String sign = percentage > 0 ? "+" : "";
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundDark,
+        color: AppTheme.backgroundOf(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.1), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.1), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,25 +488,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 16),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(current.toStringAsFixed(0), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, height: 1.0))
+            child: Text(current.toStringAsFixed(0), style: TextStyle(color: AppTheme.textPrimaryOf(context), fontSize: 24, fontWeight: FontWeight.bold, height: 1.0))
           ),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text('$sign${percentage.toStringAsFixed(1)}%', style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 24),
-          const Divider(color: Colors.white10, height: 1),
+          Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1), height: 1),
           const SizedBox(height: 12),
-          const Text('Geçen Ay', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+          Text('Geçen Ay', style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 11)),
           const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(lastMonth.toStringAsFixed(0), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14, fontWeight: FontWeight.bold))
+            child: Text(lastMonth.toStringAsFixed(0), style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 14, fontWeight: FontWeight.bold))
           ),
         ],
       ),

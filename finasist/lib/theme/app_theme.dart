@@ -35,7 +35,6 @@ class AppTheme {
         primary: primaryPurple,
         secondary: primaryPurple,
         surface: cardColor,
-        background: backgroundDark,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: backgroundDark,
@@ -81,8 +80,6 @@ class AppTheme {
         primary: primaryPurple,
         secondary: primaryPurple,
         surface: cardColorLight,
-        background: backgroundLight,
-        onBackground: textPrimaryLight,
         onSurface: textPrimaryLight,
       ),
       appBarTheme: AppBarTheme(
@@ -118,8 +115,32 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
-      dialogBackgroundColor: cardColorLight,
       fontFamily: 'Inter',
     );
   }
+
+  // --- Tema-Duyarlı Yardımcılar ---
+  // Ekranlar `AppTheme.cardColor` gibi sabit (her zaman koyu) renkleri
+  // doğrudan kullanmak yerine bu metodları kullanmalı — aksi halde açık
+  // temada kartlar/metinler koyu modda kalmaya devam eder (kullanıcının
+  // bildirdiği "yarı beyaz yarı siyah" görünüm bundan kaynaklanıyordu).
+
+  static bool _isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  /// Kart/grup arkaplan rengi — koyu modda [cardColor], açık modda [cardColorLight].
+  static Color cardColorOf(BuildContext context) =>
+      _isDark(context) ? cardColor : cardColorLight;
+
+  /// Sayfa (Scaffold) arkaplan rengi — koyu modda [backgroundDark], açık modda [backgroundLight].
+  static Color backgroundOf(BuildContext context) =>
+      _isDark(context) ? backgroundDark : backgroundLight;
+
+  /// Birincil metin rengi — koyu modda beyaz, açık modda koyu lacivert.
+  static Color textPrimaryOf(BuildContext context) =>
+      _isDark(context) ? textPrimary : textPrimaryLight;
+
+  /// İkincil (soluk) metin rengi.
+  static Color textSecondaryOf(BuildContext context) =>
+      _isDark(context) ? textSecondary : textSecondaryLight;
 }

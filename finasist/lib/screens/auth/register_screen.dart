@@ -147,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   obscureText: _obscurePassword,
                   style: const TextStyle(fontSize: 15),
                   validator: (v) {
-                    if (v == null || v.length < 6) return 'Şifre en az 6 karakter olmalı';
+                    if (v == null || v.length < 8) return 'Şifre en az 8 karakter olmalı';
                     return null;
                   },
                   decoration: _inputDecoration(
@@ -157,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     suffix: GestureDetector(
                       onTap: () => setState(() => _obscurePassword = !_obscurePassword),
                       child: Icon(_obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                          color: AppTheme.textSecondary, size: 20),
+                          color: AppTheme.textSecondaryOf(context), size: 20),
                     ),
                   ),
                 ),
@@ -181,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     suffix: GestureDetector(
                       onTap: () => setState(() => _obscureConfirm = !_obscureConfirm),
                       child: Icon(_obscureConfirm ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                          color: AppTheme.textSecondary, size: 20),
+                          color: AppTheme.textSecondaryOf(context), size: 20),
                     ),
                   ),
                 ),
@@ -192,12 +192,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: auth.isLoading ? null : _register,
+                    // Bu buton her zaman AppTheme.primaryPurple arkaplanlıdır, metin/ikon sabit beyaz kalmalı
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryPurple,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                       elevation: 4,
-                      shadowColor: AppTheme.primaryPurple.withOpacity(0.4),
+                      shadowColor: AppTheme.primaryPurple.withValues(alpha: 0.4),
                     ),
                     child: auth.isLoading
                         ? const SizedBox(

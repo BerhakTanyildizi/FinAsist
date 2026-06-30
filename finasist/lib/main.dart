@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_layout.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/lock_screen.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/auth_provider.dart';
@@ -60,26 +61,29 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  bool _dataLoaded = false;
+  bool _isUnlocked = false;
+
   @override
   void initState() {
     super.initState();
-    _init();
+    _tryAutoLogin();
   }
 
-  Future<void> _init() async {
+  Future<void> _tryAutoLogin() async {
     final auth = context.read<AuthProvider>();
-    // AuthProvider constructor'ında _checkAuthStatus() zaten çağrılıyor,
-    // isLoggedIn true ise veri de yüklüyoruz
-    if (auth.isLoggedIn) {
+    final loggedIn = await auth.tryAutoLogin();
+    if (loggedIn && mounted) {
       await context.read<TransactionProvider>().loadData();
+      _dataLoaded = true;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final settings = context.watch<SettingsProvider>();
 
-    // Token kontrolü bitene kadar loading göster
     if (auth.isLoading) {
       return const Scaffold(
         body: Center(
@@ -88,7 +92,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    // Token varsa → Ana Sayfa, yoksa → Login
+    if (auth.isLoggedIn && !_dataLoaded) {
+      _dataLoaded = true;
+      Future.microtask(() => context.read<TransactionProvider>().loadData());
+    }
+
+    if (!auth.isLoggedIn) {
+      _dataLoaded = false;
+      _isUnlocked = false;
+    }
+
+    if (auth.isLoggedIn && settings.isAppLocked && settings.hasPin && !_isUnlocked) {
+      return LockScreen(onUnlocked: () => setState(() => _isUnlocked = true));
+    }
+
     return auth.isLoggedIn ? const MainLayoutScreen() : const LoginScreen();
   }
 }

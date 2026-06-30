@@ -22,7 +22,7 @@ class TransactionProvider extends ChangeNotifier {
       _categories = await ApiService.getCategories();
       _calculateTotalBalance();
     } catch (e) {
-      print("TransactionProvider Load Error: $e");
+      debugPrint("TransactionProvider Load Error: $e");
     } finally {
       _isLoading = false;
       notifyListeners(); // Veri geldi, ekranları güncelle
@@ -94,7 +94,38 @@ class TransactionProvider extends ChangeNotifier {
     return success;
   }
 
-  // İşlemi siler ve listeyi günceller (Optimistic Update ile)
+  Future<bool> updateTransaction({
+    required int transactionId,
+    int? categoryId,
+    double? amount,
+    String? type,
+    String? merchant,
+    String? description,
+    String? transactionDate,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    bool success = await ApiService.updateTransaction(
+      transactionId: transactionId,
+      categoryId: categoryId,
+      amount: amount,
+      type: type,
+      merchant: merchant,
+      description: description,
+      transactionDate: transactionDate,
+    );
+
+    if (success) {
+      await loadData();
+    } else {
+      _isLoading = false;
+      notifyListeners();
+    }
+
+    return success;
+  }
+
   Future<bool> deleteTransaction(int transactionId) async {
     // Silme işleminden önce UI'ı anında güncelle ki Dismissible (Kaydırma ile silme) widget'ı hata vermesin
     int index = _transactions.indexWhere((tx) => tx['id'] == transactionId);

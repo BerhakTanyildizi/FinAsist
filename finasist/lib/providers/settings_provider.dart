@@ -6,11 +6,13 @@ class SettingsProvider with ChangeNotifier {
   bool _useTraditionalCalendar = true;
   String _currency = 'TRY';
   ThemeMode _themeMode = ThemeMode.dark; // Varsayılan: Karanlık tema
-  
+  String? _appPin;
+
   bool get isAppLocked => _isAppLocked;
   bool get useTraditionalCalendar => _useTraditionalCalendar;
   String get currency => _currency;
   ThemeMode get themeMode => _themeMode;
+  bool get hasPin => _appPin != null && _appPin!.isNotEmpty;
 
   // Para birimi sembolü: TRY → ₺, USD → $, EUR → €
   String get currencySymbol {
@@ -30,6 +32,7 @@ class SettingsProvider with ChangeNotifier {
     _isAppLocked = prefs.getBool('isAppLocked') ?? false;
     _useTraditionalCalendar = prefs.getBool('useTraditionalCalendar') ?? true;
     _currency = prefs.getString('currency') ?? 'TRY';
+    _appPin = prefs.getString('appPin');
     
     // Tema: 'dark', 'light', 'system'
     final themeStr = prefs.getString('themeMode') ?? 'dark';
@@ -48,8 +51,22 @@ class SettingsProvider with ChangeNotifier {
     _isAppLocked = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isAppLocked', value);
+    if (!value) {
+      _appPin = null;
+      await prefs.remove('appPin');
+    }
     notifyListeners();
   }
+
+  /// 4 haneli uygulama kilidi PIN'ini ayarlar/günceller.
+  Future<void> setAppPin(String pin) async {
+    _appPin = pin;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appPin', pin);
+    notifyListeners();
+  }
+
+  bool verifyAppPin(String pin) => _appPin != null && _appPin == pin;
 
   Future<void> setTraditionalCalendar(bool value) async {
     _useTraditionalCalendar = value;

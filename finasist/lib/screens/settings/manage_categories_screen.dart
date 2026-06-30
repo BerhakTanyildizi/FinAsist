@@ -54,7 +54,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.cardColor,
+      backgroundColor: AppTheme.cardColorOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -72,18 +72,18 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Başlık
-                const Text('Yeni Kategori', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text('Yeni Kategori', style: TextStyle(color: AppTheme.textPrimaryOf(ctx), fontSize: 22, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
 
                 // İsim Girişi
                 TextField(
                   controller: _nameController,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.textPrimaryOf(ctx)),
                   decoration: InputDecoration(
                     labelText: 'Kategori Adı',
-                    labelStyle: const TextStyle(color: AppTheme.textSecondary),
+                    labelStyle: TextStyle(color: AppTheme.textSecondaryOf(ctx)),
                     filled: true,
-                    fillColor: AppTheme.backgroundDark,
+                    fillColor: AppTheme.backgroundOf(ctx),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
@@ -102,14 +102,15 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: _categoryType == 'income' ? AppTheme.incomeGreen : AppTheme.backgroundDark,
+                            color: _categoryType == 'income' ? AppTheme.incomeGreen : AppTheme.backgroundOf(ctx),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
                             child: Text(
                               '✅ Gelir',
                               style: TextStyle(
-                                color: _categoryType == 'income' ? Colors.white : AppTheme.textSecondary,
+                                // Seçili durumda renkli arkaplan üzerinde sabit beyaz, aksi halde ikincil metin rengi
+                                color: _categoryType == 'income' ? Colors.white : AppTheme.textSecondaryOf(ctx),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -125,14 +126,15 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: _categoryType == 'expense' ? AppTheme.expenseRed : AppTheme.backgroundDark,
+                            color: _categoryType == 'expense' ? AppTheme.expenseRed : AppTheme.backgroundOf(ctx),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
                             child: Text(
                               '❌ Gider',
                               style: TextStyle(
-                                color: _categoryType == 'expense' ? Colors.white : AppTheme.textSecondary,
+                                // Seçili durumda renkli arkaplan üzerinde sabit beyaz, aksi halde ikincil metin rengi
+                                color: _categoryType == 'expense' ? Colors.white : AppTheme.textSecondaryOf(ctx),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -145,27 +147,29 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                 const SizedBox(height: 20),
 
                 // İkon Seçici
-                const Text('İkon Seç', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                Text('İkon Seç', style: TextStyle(color: AppTheme.textSecondaryOf(ctx), fontSize: 13)),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: _availableIcons.map((icon) {
                     bool isSelected = _selectedIcon == icon;
+                    final isDark = Theme.of(ctx).brightness == Brightness.dark;
                     return GestureDetector(
                       onTap: () => setSheetState(() => _selectedIcon = icon),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.primaryPurple : AppTheme.backgroundDark,
+                          color: isSelected ? AppTheme.primaryPurple : AppTheme.backgroundOf(ctx),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? AppTheme.primaryPurple : Colors.white12,
+                            color: isSelected ? AppTheme.primaryPurple : (isDark ? Colors.white12 : Colors.black12),
                             width: 2,
                           ),
                         ),
-                        child: Icon(icon, color: isSelected ? Colors.white : AppTheme.textSecondary, size: 22),
+                        // Seçili durumda mor arkaplan üzerinde sabit beyaz ikon
+                        child: Icon(icon, color: isSelected ? Colors.white : AppTheme.textSecondaryOf(ctx), size: 22),
                       ),
                     );
                   }).toList(),
@@ -189,6 +193,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                         name: name,
                         type: _categoryType,
                       );
+                      if (!mounted) return;
                       if (!success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Kategori oluşturulamadı!'), backgroundColor: AppTheme.expenseRed),
@@ -256,36 +261,39 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.all(24),
-                          decoration: const BoxDecoration(
-                            color: AppTheme.backgroundDark,
+                          decoration: BoxDecoration(
+                            color: AppTheme.backgroundOf(context),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(CupertinoIcons.tag_fill, color: AppTheme.primaryPurple, size: 48),
                         ),
                         const SizedBox(height: 24),
-                        const Text('Henüz kategori yok', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text('Henüz kategori yok', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimaryOf(context))),
                         const SizedBox(height: 8),
-                        const Text('Sağ üstteki "Yeni" butonuna tıklayarak\nkendi kategorinizi oluşturun', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                        Text('Sağ üstteki "Yeni" butonuna tıklayarak\nkendi kategorinizi oluşturun', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 14)),
                       ],
                     ),
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: filteredCategories.length,
-                    separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    separatorBuilder: (_, __) {
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      return Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05), height: 1);
+                    },
                     itemBuilder: (context, index) {
                       final cat = filteredCategories[index];
                       final bool isIncome = cat['type'] == 'income';
                       final bool isCustom = cat['user_id'] != null; // Özel mi? (Silinebilir mi?)
-                      
+
                       return Container(
-                        color: AppTheme.cardColor,
+                        color: AppTheme.cardColorOf(context),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: isIncome ? AppTheme.incomeGreen.withOpacity(0.15) : AppTheme.expenseRed.withOpacity(0.15),
+                              color: isIncome ? AppTheme.incomeGreen.withValues(alpha: 0.15) : AppTheme.expenseRed.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -294,13 +302,13 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                               size: 20,
                             ),
                           ),
-                          title: Text(cat['name'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          title: Text(cat['name'] ?? '', style: TextStyle(color: AppTheme.textPrimaryOf(context), fontWeight: FontWeight.bold)),
                           subtitle: Row(
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: (isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed).withOpacity(0.15),
+                                  color: (isIncome ? AppTheme.incomeGreen : AppTheme.expenseRed).withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -314,7 +322,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                               ),
                               if (!isCustom) ...[
                                 const SizedBox(width: 6),
-                                const Text('Sistem', style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                Text('Sistem', style: TextStyle(color: AppTheme.textSecondaryOf(context), fontSize: 11)),
                               ],
                             ],
                           ),
@@ -325,9 +333,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                                     final confirmed = await showDialog<bool>(
                                       context: context,
                                       builder: (ctx) => AlertDialog(
-                                        backgroundColor: AppTheme.cardColor,
-                                        title: const Text('Kategoriyi Sil', style: TextStyle(color: Colors.white)),
-                                        content: Text('"${cat['name']}" kategorisini silmek istediğinize emin misiniz?', style: const TextStyle(color: AppTheme.textSecondary)),
+                                        backgroundColor: AppTheme.cardColorOf(ctx),
+                                        title: Text('Kategoriyi Sil', style: TextStyle(color: AppTheme.textPrimaryOf(ctx))),
+                                        content: Text('"${cat['name']}" kategorisini silmek istediğinize emin misiniz?', style: TextStyle(color: AppTheme.textSecondaryOf(ctx))),
                                         actions: [
                                           TextButton(
                                             onPressed: () => Navigator.pop(ctx, false),
@@ -341,12 +349,13 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
                                       ),
                                     );
                                     if (confirmed == true) {
+                                      if (!mounted) return;
                                       await Provider.of<TransactionProvider>(context, listen: false)
                                           .deleteCategory(cat['id']);
                                     }
                                   },
                                 )
-                              : const Icon(CupertinoIcons.lock_fill, color: AppTheme.textSecondary, size: 16),
+                              : Icon(CupertinoIcons.lock_fill, color: AppTheme.textSecondaryOf(context), size: 16),
                         ),
                       );
                     },
@@ -359,24 +368,27 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen> {
 
   Widget _filterChip(String label, String value) {
     bool isSelected = _filterType == value;
-    return GestureDetector(
-      onTap: () => setState(() => _filterType = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryPurple : AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.textSecondary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
+    return Builder(builder: (context) {
+      return GestureDetector(
+        onTap: () => setState(() => _filterType = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryPurple : AppTheme.cardColorOf(context),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              // Seçili durumda mor arkaplan üzerinde sabit beyaz, aksi halde ikincil metin rengi
+              color: isSelected ? Colors.white : AppTheme.textSecondaryOf(context),
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 13,
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }

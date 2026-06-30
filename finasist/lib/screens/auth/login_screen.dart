@@ -43,8 +43,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // Veri yükle, sonra ana ekrana geç
       await context.read<TransactionProvider>().loadData();
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainLayoutScreen()),
+        (route) => false,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,12 +89,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryPurple.withOpacity(0.4),
+                          color: AppTheme.primaryPurple.withValues(alpha: 0.4),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
                       ],
                     ),
+                    // Bu logo kutusu her zaman mor gradyan arkaplanlıdır, ikon sabit beyaz kalmalı
                     child: const Icon(CupertinoIcons.chart_bar_alt_fill, color: Colors.white, size: 44),
                   ),
                 ),
@@ -150,7 +152,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: () => setState(() => _obscurePassword = !_obscurePassword),
                       child: Icon(
                         _obscurePassword ? CupertinoIcons.eye : CupertinoIcons.eye_slash,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.textSecondaryOf(context),
                         size: 20,
                       ),
                     ),
@@ -163,12 +165,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: auth.isLoading ? null : _login,
+                    // Bu buton her zaman AppTheme.primaryPurple arkaplanlıdır, metin/ikon sabit beyaz kalmalı
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryPurple,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                       elevation: 4,
-                      shadowColor: AppTheme.primaryPurple.withOpacity(0.4),
+                      shadowColor: AppTheme.primaryPurple.withValues(alpha: 0.4),
                     ),
                     child: auth.isLoading
                         ? const SizedBox(
